@@ -14,26 +14,18 @@ import torch.backends.cudnn as cudnn
 import models.anynet
 
 parser = argparse.ArgumentParser(description='Anynet fintune on KITTI')
-parser.add_argument('--maxdisp', type=int, default=192,
-                    help='maxium disparity')
+parser.add_argument('--maxdisp', type=int, default=192, help='maxium disparity')
 parser.add_argument('--loss_weights', type=float, nargs='+', default=[0.25, 0.5, 1., 1.])
 parser.add_argument('--max_disparity', type=int, default=192)
 parser.add_argument('--maxdisplist', type=int, nargs='+', default=[12, 3, 3])
-parser.add_argument('--datatype', default='2015',
-                    help='datapath')
+parser.add_argument('--datatype', default='2015', help='datapath')
 parser.add_argument('--datapath', default=None, help='datapath')
-parser.add_argument('--epochs', type=int, default=300,
-                    help='number of epochs to train')
-parser.add_argument('--train_bsize', type=int, default=6,
-                    help='batch size for training (default: 6)')
-parser.add_argument('--test_bsize', type=int, default=8,
-                    help='batch size for testing (default: 8)')
-parser.add_argument('--save_path', type=str, default='results/finetune_anynet',
-                    help='the path of saving checkpoints and log')
-parser.add_argument('--resume', type=str, default=None,
-                    help='resume path')
-parser.add_argument('--lr', type=float, default=5e-4,
-                    help='learning rate')
+parser.add_argument('--epochs', type=int, default=300, help='number of epochs to train')
+parser.add_argument('--train_bsize', type=int, default=6, help='batch size for training (default: 6)')
+parser.add_argument('--test_bsize', type=int, default=8, help='batch size for testing (default: 8)')
+parser.add_argument('--save_path', type=str, default='train_results/finetune_anynet', help='the path of saving checkpoints and log')
+parser.add_argument('--resume', type=str, default=None, help='resume path')
+parser.add_argument('--lr', type=float, default=5e-4, help='learning rate')
 parser.add_argument('--with_spn', action='store_true', help='with spn network or not')
 parser.add_argument('--print_freq', type=int, default=5, help='print frequence')
 parser.add_argument('--init_channels', type=int, default=1, help='initial channels for 2d feature extractor')
@@ -43,8 +35,7 @@ parser.add_argument('--layers_3d', type=int, default=4, help='number of initial 
 parser.add_argument('--growth_rate', type=int, nargs='+', default=[4,1,1], help='growth rate in the 3d network')
 parser.add_argument('--spn_init_channels', type=int, default=8, help='initial channels for spnet')
 parser.add_argument('--start_epoch_for_spn', type=int, default=121)
-parser.add_argument('--pretrained', type=str, default='results/pretrained_anynet/checkpoint.tar',
-                    help='pretrained model path')
+parser.add_argument('--pretrained', type=str, default='results/pretrained_anynet/checkpoint.tar', help='pretrained model path')
 parser.add_argument('--split_file', type=str, default=None)
 parser.add_argument('--evaluate', action='store_true')
 
@@ -55,14 +46,57 @@ if args.datatype == '2015':
     from dataloader import KITTIloader2015 as ls
 elif args.datatype == '2012':
     from dataloader import KITTIloader2012 as ls
-elif args.datatype == 'other':
-    from dataloader import diy_dataset as ls
+elif args.datatype == 'custom':
+    from dataloader import custom_loader as ls
 
+'''
+YH: 
+    ----------------------------------------------------------------------------------
+    Train a brand new model by yourself.
+    
+    Firstly, we use the following command to pretrained AnyNet on Scene Flow:
+    python main.py --maxdisp 192 --with_spn
+    
+    Secondly, we use the following command to finetune AnyNet on KITTI 2015:
+    python finetune.py --maxdisp 192 --with_spn --datapath path-to-kitti2015/training/
+    
+    ----------------------------------------------------------------------------------
+    
+    You can download the SceneFlow, KITTI2012, KITTI2015 pretrained models.
+    
+    To evaluate the pretrained model on KITTI2012:
+    python finetune.py --maxdisp 192 --with_spn --datapath path-to-kitti2012/training/ \
+    --save_path results/kitti2012 --datatype 2012 --pretrained checkpoint/kitti2012_ck/checkpoint.tar \
+    --split_file checkpoint/kitti2012_ck/split.txt --evaluate
+    
+    To evaluate the pretrained model on KITTI2015:
+    python finetune.py --maxdisp 192 --with_spn --datapath path-to-kitti2015/training/ \
+    --save_path results/kitti2015 --datatype 2015 --pretrained checkpoint/kitti2015_ck/checkpoint.tar \
+    --split_file checkpoint/kitti2015_ck/split.txt --evaluate
 
+    To fine-tune the ScenFlow pretrained model on KITTI2015
+    python finetune.py --maxdisp 192 --with_spn --datapath path-to-kitti2015/training/ \
+    --pretrained checkpoint/sceneflow/sceneflow.tar
+
+    To fine-tune the ScenFlow pretrained model on KITTI2012
+    python finetune.py --maxdisp 192 --with_spn --datapath path-to-kitti2012/training/ \
+    --pretrained checkpoint/sceneflow/sceneflow.tar --datatype 2012
+    
+    ----------------------------------------------------------------------------------
+
+    You can finetune on your own dataset:
+    
+    python finetune.py --maxdisp 192 --with_spn --datapath path-to-your-dataset/ \
+    --pretrained checkpoint/scenflow/sceneflow.tar --datatype other
+'''
 def main():
+    
     global args
+    
+    # YH: Still use "training" log for fine-tuning or evaluation.
     log = logger.setup_logger(args.save_path + '/training.log')
 
+    # YH: Fine-tuning uses KITTI loader or "custom_loader".
     train_left_img, train_right_img, train_left_disp, test_left_img, test_right_img, test_left_disp = ls.dataloader(
         args.datapath,log, args.split_file)
 
@@ -107,6 +141,17 @@ def main():
             log.info("=> Will start from scratch.")
     else:
         log.info('Not Resume')
+    
+    '''
+    YH: This flag allows you to enable the inbuilt 'cudnn' auto-tuner 
+        to find the best algorithm to use for your hardware.
+        benchmark mode is good whenever your input sizes for your network do not vary. 
+        This way, cudnn will look for the optimal set of algorithms 
+        for that particular configuration (which takes some time). 
+        This usually leads to faster runtime.
+        But if your input sizes changes at each iteration, 
+        then cudnn will benchmark every time a new size appears, possibly leading to worse runtime performances.
+    '''
     cudnn.benchmark = True
     start_full_time = time.time()
     if args.evaluate:
@@ -115,6 +160,7 @@ def main():
 
     for epoch in range(args.start_epoch, args.epochs):
         log.info('This is {}-th epoch'.format(epoch))
+        # YH: Adjust learning rate for different epoch.
         adjust_learning_rate(optimizer, epoch)
 
         train(TrainImgLoader, model, optimizer, log, epoch)
@@ -142,8 +188,11 @@ def train(dataloader, model, optimizer, log, epoch=0):
     model.train()
 
     for batch_idx, (imgL, imgR, disp_L) in enumerate(dataloader):
+        print(type(imgL))
+
         imgL = imgL.float().cuda()
         imgR = imgR.float().cuda()
+        # YH: Ground truth
         disp_L = disp_L.float().cuda()
 
         optimizer.zero_grad()
@@ -189,6 +238,7 @@ def test(dataloader, model, log):
     for batch_idx, (imgL, imgR, disp_L) in enumerate(dataloader):
         imgL = imgL.float().cuda()
         imgR = imgR.float().cuda()
+        # YH: Ground truth
         disp_L = disp_L.float().cuda()
 
         with torch.no_grad():

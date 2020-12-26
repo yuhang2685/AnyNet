@@ -4,6 +4,8 @@ from PIL import Image
 import os
 import os.path
 
+# YH: Rearrange the files in the SceneFlow folder into different lists with renaming containing the path information.
+
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
     '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',

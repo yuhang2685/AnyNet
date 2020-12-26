@@ -2,6 +2,10 @@ import torch
 import torchvision.transforms as transforms
 import random
 
+'''
+YH: A couple of image preprocessing methods, also including some data augamentation methods.
+'''
+
 __imagenet_stats = {'mean': [0.485, 0.456, 0.406],
                    'std': [0.229, 0.224, 0.225]}
 
@@ -17,10 +21,31 @@ __imagenet_pca = {
     ])
 }
 
-
+# YH: The method is a composed transformations (pipeline) for converting a PIL Image to tensor and normalizing the tensor image.
 def scale_crop(input_size, scale_size=None, normalize=__imagenet_stats):
     t_list = [
+        '''
+        YH: "Transforms" refering to common image transformations.
+            They can be chained together using "Compose".
+            Additionally, there is the "torchvision.transforms.functional" module. 
+            Functional transforms give fine-grained control over the transformations. 
+            This is useful if you have to build a more complex transformation pipeline (e.g. in the case of segmentation tasks).
+            All transformations accept PIL Image, Tensor Image or batch of Tensor Images as input. 
+            Tensor Image is a tensor with (C, H, W) shape, where C is a number of channels, H and W are image height and width. 
+            Batch of Tensor Images is a tensor of (B, C, H, W) shape, where B is a number of images in the batch. 
+            Deterministic or random transformations applied on the batch of Tensor Images identically transform all the images of the batch.
+        '''
+        # YH: "transforms.ToTensor()" converts a PIL Image or numpy.ndarray to tensor.
+        #     Converts a PIL Image or numpy.ndarray (H x W x C) in the range [0, 255] 
+        #           to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0] (scaled?).
         transforms.ToTensor(),
+        
+        '''
+        YH: Normalize a tensor image with mean and standard deviation. 
+            Given mean: (mean[1],...,mean[n]) and std: (std[1],..,std[n]) for n channels, 
+            this transform will normalize each channel of the input torch.*Tensor 
+            i.e., output[channel] = (input[channel] - mean[channel]) / std[channel]
+        '''
         transforms.Normalize(**normalize),
     ]
     #if scale_size != input_size:
@@ -93,7 +118,14 @@ class Lighting(object):
         self.alphastd = alphastd
         self.eigval = eigval
         self.eigvec = eigvec
+    
+    ''' 
+    YH: The __call__ method enables Python programmers to write classes 
+        where the instances behave like functions and can be called like a function. 
+        When the instance is called as a function; 
+        if this method is defined, x(arg1, arg2, ...) is a shorthand for x.__call__(arg1, arg2, ...).
 
+    '''
     def __call__(self, img):
         if self.alphastd == 0:
             return img
@@ -161,12 +193,16 @@ class RandomOrder(object):
     def __call__(self, img):
         if self.transforms is None:
             return img
+        
+        # YH: Apply randomly permuted set of transforms on the image.
         order = torch.randperm(len(self.transforms))
         for i in order:
             img = self.transforms[i](img)
         return img
 
-
+# YH: Color Jitter is a type of image data augmentation 
+#     where we randomly change the brightness, contrast and saturation of an image.
+#     This class object will contain parameters for doing "color jitter" in its property "transforms".
 class ColorJitter(RandomOrder):
 
     def __init__(self, brightness=0.4, contrast=0.4, saturation=0.4):

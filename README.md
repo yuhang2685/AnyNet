@@ -21,6 +21,30 @@ It has been accepted by International Conference on Robotics and Automation (ICR
 
 Many real-world applications of stereo depth es- timation in robotics require the generation of disparity maps in real time on low power devices. Depth estimation should be accurate, e.g. for mapping the environment, and real-time, e.g. for obstacle avoidance. Current state-of-the-art algorithms can either generate accurate but slow, or fast but high-error mappings, and typically have far too many parameters for low-power/memory devices. Motivated by this shortcoming we propose a novel approach for disparity prediction in the anytime setting. In contrast to prior work, our end-to-end learned approach can trade off computation and accuracy at inference time. The depth estimation is performed in stages, during which the model can be queried at any time to output its current best estimate. In the first stage it processes a scaled down version of the input images to obtain an initial low resolution sketch of the disparity map. This sketch is then successively refined with higher resolution details until a full resolution, high quality disparity map emerges. Here, we leverage the fact that disparity refinements can be performed extremely fast as the residual error is bounded by only a few pixels. Our final model can process 1242×375 resolution images within a range of 10-35 FPS on an NVIDIA Jetson TX2 module with only marginal increases in error – using two orders of magnitude fewer parameters than the most competitive baseline.
 
+## Code map
+```angular2
+AnyNet
+  |____ dataloader/
+          |____ KITTILoader.py       #Image loader for KITTI dataset
+          |____ SecenFlowLoader.py   #Image loader for Scene Flow dataset
+          |____ listflowfile.py      #Rearrange files in Scene Flow dataset into lists
+          |____ preprocess.py        #Image preprocess procedures including data augamentation procedures
+          |____ readpfm.py           #Read data from Portable FloatMap format
+  |____ docs/           
+  |____ figures/           
+  |____ models/        
+          |____ spn/
+          |____ spn_t1/
+          |____ anynet.py            #anynet model
+          |____ submodules.py        #Submodels for anynet
+  |____ utils/
+          |____ logger.py            
+          |____ preprocess.py        #Image preprocess procedures including data augamentation procedures
+          |____ readpfm.py           #Read data from Portable FloatMap format
+  |____ create_dataset.sh            #Scripts to create soft-link for Flow Scene dataset
+  |____ finetune.py                  #Fine-tune or evaluation on pretrained model
+  |____ main.py                      #Train model with Flow Scene dataset
+```
 
 ## Usage
 0. Install dependencies

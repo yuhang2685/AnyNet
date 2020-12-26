@@ -9,22 +9,13 @@ It has been accepted by International Conference on Robotics and Automation (ICR
 
 ![Figure](figures/network.png)
 
-### Citation
-```
-@article{wang2018anytime,
-  title={Anytime Stereo Image Depth Estimation on Mobile Devices},
-  author={Wang, Yan and Lai, Zihang and Huang, Gao and Wang, Brian H. and Van Der Maaten, Laurens and Campbell, Mark and Weinberger, Kilian Q},
-  journal={arXiv preprint arXiv:1810.11408},
-  year={2018}
-}
-```
 
 ## Contents
 
 1. [Introduction](#introduction)
 2. [Usage](#usage)
 3. [Results](#results)
-4. [Contacts](#contacts)
+
 
 ## Introduction
 
